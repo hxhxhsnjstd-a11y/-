@@ -1,0 +1,26 @@
+{
+ "name": "اليونس للتعهدات",
+ "short_name": "اليونس",
+ "description": "جرد وحسابات اليونس للتعهدات",
+ "lang": "ar",
+ "dir": "rtl",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#F1F5F3",
+ "theme_color": "#1E7145",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any maskable"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}
