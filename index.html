@@ -251,6 +251,8 @@ tbody tr:hover td{background:var(--surface-2)}
       <label class="fld" id="wQty"><span id="lQty">الكمية (م³)</span><input id="fQty" class="num" type="text" inputmode="decimal" placeholder="0"></label>
       <label class="fld" id="wPrice"><span id="lPrice">سعر شراء المتر المكعب</span><input id="fPrice" class="num" type="text" inputmode="decimal" placeholder="0"></label>
       <label class="fld" id="wCur"><span>العملة</span><select id="fCur"><option value="syp">ليرة سورية (ل.س)</option><option value="usd">دولار ($)</option></select></label>
+      <label class="fld" id="wCar"><span>السيارة (اختياري)</span><input id="fCar" list="carsList" placeholder="اسم أو رقم"></label>
+      <label class="fld" id="wFare"><span>أجرة النقل (تُضاف على الزبون)</span><input id="fFare" class="num" type="text" inputmode="decimal" placeholder="0"></label>
       <label class="fld wide"><span>ملاحظة</span><input id="fNote" placeholder="اختياري"></label>
     </div>
     <div class="entry-foot">
@@ -261,6 +263,32 @@ tbody tr:hover td{background:var(--surface-2)}
       </div>
     </div>
     <p id="msg" class="msg" role="status"></p>
+  </form>
+
+  <form class="entry" id="fBlock" autocomplete="off" novalidate hidden>
+    <div class="entry-head"><h2>بلوك: شراء من المعمل وبيع للزبون</h2><span class="editing" id="bEditing" hidden>تعديل شحنة</span></div>
+    <div class="fields">
+      <label class="fld"><span>التاريخ</span><input id="bDate" type="date"></label>
+      <label class="fld wide"><span>الزبون (فارغ = نقداً)</span><input id="bParty" list="partiesList" placeholder="اسم الزبون"></label>
+      <label class="fld wide"><span>المعمل</span><input id="bFactory" list="factoriesList" placeholder="اسم المعمل"></label>
+      <label class="fld wide"><span>نوع البلوك</span><input id="bType" list="blockTypes" placeholder="مثال: بلوك 15"></label>
+      <label class="fld"><span>العدد (بلوكة)</span><input id="bQty" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld"><span>سعر البلوكة للزبون</span><input id="bPrice" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld"><span>سعر البلوكة من المعمل</span><input id="bCost" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld"><span>العملة</span><select id="bCur"><option value="syp">ليرة سورية (ل.س)</option><option value="usd">دولار ($)</option></select></label>
+      <label class="fld wide"><span>السيارة التي حملت</span><input id="bCar" list="carsList" placeholder="اسم أو رقم"></label>
+      <label class="fld"><span>أجرة النقل (على الزبون)</span><input id="bFare" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld" id="bWPaid"><span>دفعت للمعمل الآن (مبلغ)</span><input id="bPaid" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld wide" id="bWOff"><span>الزبون نزّل لي مادة بدل المبلغ (اختياري)</span><select id="bOffItem"></select></label>
+      <label class="fld" id="bWOffQty"><span>الكمية (م³)</span><input id="bOffQty" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld" id="bWOffPrice"><span>سعر المتر</span><input id="bOffPrice" class="num" type="text" inputmode="decimal" placeholder="0"></label>
+      <label class="fld wide"><span>ملاحظة</span><input id="bNote" placeholder="اختياري"></label>
+    </div>
+    <div class="entry-foot">
+      <div id="bPrev" class="pv" aria-live="polite"></div>
+      <div class="btns"><button type="button" class="btn" id="bCancel" hidden>إلغاء</button><button type="submit" class="btn primary" id="bSave">إضافة</button></div>
+    </div>
+    <p id="bMsg" class="msg" role="status"></p>
   </form>
 
   <form class="entry" id="fDebt" autocomplete="off" novalidate hidden>
@@ -314,10 +342,14 @@ tbody tr:hover td{background:var(--surface-2)}
   </form>
   <datalist id="partiesList"></datalist>
   <datalist id="expList"></datalist>
+  <datalist id="carsList"></datalist>
+  <datalist id="factoriesList"></datalist>
+  <datalist id="blockTypes"></datalist>
 
   <nav class="tabs" role="tablist" aria-label="العرض">
     <button role="tab" id="tab-stock" data-tab="stock" aria-selected="true">الجرد</button>
     <button role="tab" id="tab-mats" data-tab="mats" aria-selected="false">المواد</button>
+    <button role="tab" id="tab-block" data-tab="block" aria-selected="false">البلوك</button>
     <button role="tab" id="tab-people" data-tab="people" aria-selected="false">حسابات الناس</button>
     <button role="tab" id="tab-debts" data-tab="debts" aria-selected="false">الديون</button>
     <button role="tab" id="tab-moves" data-tab="moves" aria-selected="false">الحركات</button>
@@ -359,14 +391,15 @@ function canonItem(name){
 function round6(x){return Math.round(x*1e6)/1e6;}
 function curOf(r){return r&&r.cur==='usd'?'usd':'syp';}
 function amt(r){return (+r.qty||0)*(+r.price||0);}
-function isTradeType(r){return r.type==='buy'||r.type==='sell'||r.type==='pay'||r.type==='recv'||(r.type==='open'&&r.kind!=='loan');}
+function isTradeType(r){return r.type==='buy'||r.type==='sell'||r.type==='pay'||r.type==='recv'||r.type==='block'||r.type==='blockbuy'||r.type==='fare'||r.type==='carfee'||(r.type==='open'&&r.kind!=='loan');}
 function isLoanType(r){return r.type==='loanin'||r.type==='loanout'||r.type==='loanpay'||r.type==='loanback'||(r.type==='open'&&r.kind==='loan');}
 /* positive balance = you owe him, negative = he owes you */
 function tradeSign(r){
   if(!isTradeType(r))return 0;
   var a=amt(r);
   if(r.type==='buy'||r.type==='recv')return a;
-  if(r.type==='sell'||r.type==='pay')return -a;
+  if(r.type==='sell'||r.type==='pay'||r.type==='block'||r.type==='fare')return -a;
+  if(r.type==='blockbuy'||r.type==='carfee')return a;
   return r.dir==='due'?-a:a;
 }
 function loanSign(r){
@@ -384,9 +417,25 @@ function rank(r){
 function cmpRows(a,b){
   return (a.date||'').localeCompare(b.date||'')||(rank(a)-rank(b))||((a.ts||0)-(b.ts||0))||String(a.id).localeCompare(String(b.id));
 }
+function expand(rows){
+  var out=[];
+  rows.forEach(function(r){
+    out.push(r);
+    var fare=+r.fare||0,car=String(r.car||'').trim(),who=String(r.party||'').trim(),fac=String(r.factory||'').trim();
+    if(r.type==='block'&&fac){
+      out.push({id:r.id+'#b',date:r.date,type:'blockbuy',party:fac,item:r.item,qty:+r.qty||0,price:+r.cost||0,cur:r.cur,note:who?('لـ '+who):'',ts:r.ts,virtual:true});
+    }
+    if((r.type==='sell'||r.type==='block')&&fare>0){
+      if(who)out.push({id:r.id+'#f',date:r.date,type:'fare',party:who,item:'',qty:1,price:fare,cur:r.cur,note:car?('سيارة '+car):'',ts:r.ts,virtual:true});
+      if(car)out.push({id:r.id+'#c',date:r.date,type:'carfee',party:car,item:'',qty:1,price:fare,cur:r.cur,note:who?('لـ '+who):'',ts:r.ts,virtual:true});
+    }
+  });
+  return out;
+}
 function compute(rows,rate){
+  rows=expand(rows);
   var items=new Map(),rowCalc=new Map(),months=new Map(),exp=new Map(),parties=new Map();
-  var T={sales:0,cogs:0,purchases:0,loss:0,expenses:0,cashIn:0,cashOut:0,openCash:0};
+  var T={sales:0,cogs:0,purchases:0,loss:0,expenses:0,cashIn:0,cashOut:0,openCash:0,blocks:0};
   var short=0,shortItems=new Set();
   function pty(r){
     var k=norm(r.party);
@@ -411,6 +460,7 @@ function compute(rows,rate){
       pt=pty(r);
       if(pt){var ts=tradeSign(r),ls=loanSign(r);pt.balance+=ts*fx;pt.loan+=ls*fx;pt.bal[cu]+=ts;pt.lb[cu]+=ls;if(isLoanType(r))pt.hasLoan=true;}
     }
+    if(t==='blockbuy'||t==='fare'||t==='carfee')return;
     if(t==='open'){rowCalc.set(r.id,{amount:a});return;}
     if(t==='opencash'){T.openCash+=a;rowCalc.set(r.id,{amount:a});return;}
     if(t==='pay'||t==='loanpay'||t==='loanout'){T.cashOut+=a;rowCalc.set(r.id,{amount:a});return;}
@@ -420,6 +470,14 @@ function compute(rows,rate){
       var k=norm(r.item),e=exp.get(k);
       if(!e){e={name:canonItem(r.item),total:0};exp.set(k,e);}
       e.total+=a;rowCalc.set(r.id,{amount:a});
+      return;
+    }
+    if(t==='block'){
+      var bc=q*(+r.cost||0)*fx,fr=(+r.fare||0)*fx;
+      m=mo(r.date);T.sales+=a;T.cogs+=bc;m.sales+=a;m.cogs+=bc;T.blocks+=q;
+      if(!pt)T.cashIn+=a+fr;
+      if(!String(r.factory||'').trim())T.cashOut+=bc;
+      rowCalc.set(r.id,{amount:a,cogs:bc,profit:a-bc});
       return;
     }
     if(t!=='buy'&&t!=='openstock'&&t!=='sell'&&t!=='loss')return;
@@ -457,7 +515,7 @@ function compute(rows,rate){
     m=mo(r.date);
     if(t==='sell'){
       T.sales+=a;T.cogs+=rcCogs;m.sales+=a;m.cogs+=rcCogs;
-      if(!pt)T.cashIn+=a;
+      if(!pt)T.cashIn+=a+(+r.fare||0)*fx;
       rowCalc.set(r.id,{amount:a,cogs:rcCogs,profit:a-rcCogs,short:rcShort});
     }else{
       T.loss+=rcCogs;m.loss+=rcCogs;
@@ -491,6 +549,7 @@ function weekStart(s){
   return addDays(s,-((wd+1)%7));
 }
 function ledger(rows,name,kind,start,end,cur){
+  rows=expand(rows);
   var k=norm(name),sf=kind==='loan'?loanSign:tradeSign,prev=0,bal=0,lines=[];
   var list=rows.filter(function(r){return norm(r.party)===k&&curOf(r)===cur&&(kind==='loan'?isLoanType(r):isTradeType(r));}).sort(cmpRows);
   list.forEach(function(r){if(r.type==='open'||(r.date||'')<start)prev+=sf(r);});
@@ -504,13 +563,14 @@ function ledger(rows,name,kind,start,end,cur){
   return {prev:prev,lines:lines,close:bal};
 }
 function statement(rows,start,end,cur){
+  rows=expand(rows);
   var map=new Map();
   rows.forEach(function(r){
     if(!isTradeType(r)||curOf(r)!==cur)return;
     var k=norm(r.party);
     if(!k)return;
     var x=map.get(k);
-    if(!x){x={key:k,name:String(r.party).trim().replace(/\s+/g,' '),prev:0,buyQty:0,buyAmt:0,sellQty:0,sellAmt:0,pay:0,recv:0,close:0};map.set(k,x);}
+    if(!x){x={key:k,name:String(r.party).trim().replace(/\s+/g,' '),prev:0,buyQty:0,buyAmt:0,sellQty:0,sellAmt:0,pay:0,recv:0,blkQty:0,blkAmt:0,bbQty:0,bbAmt:0,fare:0,carFee:0,close:0};map.set(k,x);}
     var s=tradeSign(r),a=amt(r),d=r.date||'',q=+r.qty||0;
     if(r.type==='open'){x.prev+=s;x.close+=s;return;}
     if(d>end)return;
@@ -518,24 +578,28 @@ function statement(rows,start,end,cur){
     if(d<start){x.prev+=s;return;}
     if(r.type==='buy'){x.buyQty+=q;x.buyAmt+=a;}
     else if(r.type==='sell'){x.sellQty+=q;x.sellAmt+=a;}
+    else if(r.type==='block'){x.blkQty+=q;x.blkAmt+=a;}
+    else if(r.type==='blockbuy'){x.bbQty+=q;x.bbAmt+=a;}
+    else if(r.type==='fare')x.fare+=a;
+    else if(r.type==='carfee')x.carFee+=a;
     else if(r.type==='pay')x.pay+=a;
     else x.recv+=a;
   });
   return Array.from(map.values()).filter(function(x){
-    return Math.abs(x.close)>0.005||x.buyAmt||x.sellAmt||x.pay||x.recv;
+    return Math.abs(x.close)>0.005||x.buyAmt||x.sellAmt||x.pay||x.recv||x.blkAmt||x.bbAmt||x.fare||x.carFee;
   });
 }
 /*COMPUTE_END*/
 
 var $=function(id){return document.getElementById(id);};
-var TYPE_LABEL={buy:'استلام',sell:'بيع',loss:'تالف',expense:'مصروف',pay:'دفعت له',recv:'قبضت منه',open:'رصيد سابق',openstock:'مخزون سابق',opencash:'صندوق سابق',loanin:'استلفت منه',loanout:'أقرضته',loanpay:'سدّدت له',loanback:'سدّد لي'};
-var PILL={buy:'buy',sell:'sell',loss:'loss',expense:'expense'};
+var TYPE_LABEL={buy:'استلام',sell:'بيع',loss:'تالف',expense:'مصروف',pay:'دفعت له',recv:'قبضت منه',open:'رصيد سابق',openstock:'مخزون سابق',opencash:'صندوق سابق',loanin:'استلفت منه',loanout:'أقرضته',loanpay:'سدّدت له',loanback:'سدّد لي',block:'بلوك',blockbuy:'شراء بلوك',fare:'أجرة نقل',carfee:'أجرة نقل'};
+var PILL={block:'sell',buy:'buy',sell:'sell',loss:'loss',expense:'expense'};
 var CURRENCIES=['ل.س','$','€','ر.س','د.إ','د.أ','ل.ل','ج.م','₺','بدون'];
-var TABS=['stock','mats','people','debts','moves','acc','old'];
+var TABS=['stock','mats','block','people','debts','moves','acc','old'];
 var rows=[];
 var calc=compute([]);
 var inClaude=!!(window.claude&&window.claude.use);
-var S={ready:false,mode:'pending',synced:false,slow:false,err:'',tab:'stock',mat:'sand',rate:0,filter:'',filterKind:'item',filterName:'',q:'',editing:null,confirm:null,canExport:false,wstart:'',all:false,stmt:null,copyText:'',imp:null};
+var S={ready:false,mode:'pending',synced:false,slow:false,err:'',tab:'stock',mat:'sand',editingB:null,rate:0,filter:'',filterKind:'item',filterName:'',q:'',editing:null,confirm:null,canExport:false,wstart:'',all:false,stmt:null,copyText:'',imp:null};
 var col=null,dl=null,toastTimer=null;
 
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
@@ -610,7 +674,7 @@ function useLocal(){
 async function init(){
   var rt=parseFloat(lsGet('jard.rate')||'');if(rt>0)S.rate=rt;
   $('rate').value=S.rate?String(S.rate):'';
-  $('dDate').value=today();$('oDate').value=today();$('fDate').value=today();
+  $('dDate').value=today();$('oDate').value=today();$('fDate').value=today();$('bDate').value=today();fillBlockOff();syncBlockOff();
   render();
   var db=null;
   try{if(inClaude){db=await window.claude.use('db');}}catch(e){db=null;}
@@ -679,7 +743,8 @@ function renderTiles(){
 function renderTabs(){
   TABS.forEach(function(t){$('tab-'+t).setAttribute('aria-selected',S.tab===t?'true':'false');});
   $('bar').hidden=S.tab!=='moves'||!!S.stmt;
-  $('f').hidden=(S.tab==='debts'||S.tab==='old'||!!S.stmt);
+  $('f').hidden=(S.tab==='debts'||S.tab==='old'||S.tab==='block'||!!S.stmt);
+  $('fBlock').hidden=S.tab!=='block'||!!S.stmt;
   $('fDebt').hidden=S.tab!=='debts';
   $('fOld').hidden=S.tab!=='old';
 }
@@ -748,6 +813,12 @@ function refreshLists(){
   var pn=Array.from(calc.parties.values()).map(function(p){return p.name;}).sort(function(a,b){return a.localeCompare(b,'ar');});
   $('partiesList').innerHTML=pn.map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');
   var ex=Array.from(calc.exp.values()).map(function(e){return e.name;}).sort(function(a,b){return a.localeCompare(b,'ar');});
+  var cars={},facs={},bts={};
+  ['بلوك 10','بلوك 15','بلوك 20','بلوك سقف'].forEach(function(n){bts[n]=1;});
+  rows.forEach(function(r){if(r.car)cars[String(r.car).trim()]=1;if(r.factory)facs[String(r.factory).trim()]=1;if(r.type==='block'&&r.item)bts[String(r.item).trim()]=1;});
+  function dl(id,o){$(id).innerHTML=Object.keys(o).sort(function(a,b){return a.localeCompare(b,'ar');}).map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');}
+  dl('carsList',cars);dl('factoriesList',facs);dl('blockTypes',bts);
+  fillBlockOff();
   $('expList').innerHTML=ex.map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');
 }
 function demoBanner(){
@@ -885,6 +956,10 @@ function viewPeople(){
       if(Math.abs(x.prev)>0.005)li+='<li>رصيد سابق: '+(x.prev>0?'تدفع له ':'يدفع لك ')+'<b>'+money(Math.abs(x.prev),cu)+'</b></li>';
       if(x.buyAmt)li+='<li>استلمت منه <b>'+qty(x.buyQty)+'</b> م³ بقيمة <b>'+money(x.buyAmt,cu)+'</b></li>';
       if(x.sellAmt)li+='<li>حمّل منك <b>'+qty(x.sellQty)+'</b> م³ بقيمة <b>'+money(x.sellAmt,cu)+'</b></li>';
+      if(x.blkAmt)li+='<li>بلوك لزبونه: <b>'+qty(x.blkQty)+'</b> بلوكة بقيمة <b>'+money(x.blkAmt,cu)+'</b></li>';
+      if(x.bbAmt)li+='<li>بلوك من معمله: <b>'+qty(x.bbQty)+'</b> بلوكة بقيمة <b>'+money(x.bbAmt,cu)+'</b></li>';
+      if(x.fare)li+='<li>أجرة نقل عليه: <b>'+money(x.fare,cu)+'</b></li>';
+      if(x.carFee)li+='<li>أجرة نقل له (سيارته): <b>'+money(x.carFee,cu)+'</b></li>';
       if(x.pay)li+='<li>دفعت له <b>'+money(x.pay,cu)+'</b></li>';
       if(x.recv)li+='<li>قبضت منه <b>'+money(x.recv,cu)+'</b></li>';
     });
@@ -922,21 +997,28 @@ function viewDebts(){
 function filteredMoves(){
   var q=S.q.trim().toLowerCase();
   return rows.filter(function(r){
-    if(S.filter&&(S.filterKind==='party'?norm(r.party):norm(r.item))!==S.filter)return false;
-    if(q&&(String(r.item||'')+' '+(r.party||'')+' '+(r.note||'')).toLowerCase().indexOf(q)<0)return false;
+    if(S.filter&&(S.filterKind==='party'?!(norm(r.party)===S.filter||norm(r.factory)===S.filter||norm(r.car)===S.filter):norm(r.item)!==S.filter))return false;
+    if(q&&(String(r.item||'')+' '+(r.party||'')+' '+(r.factory||'')+' '+(r.car||'')+' '+(r.note||'')).toLowerCase().indexOf(q)<0)return false;
     return true;
   }).sort(function(a,b){return cmpRows(b,a);});
 }
-var EDITABLE={buy:1,sell:1,loss:1,expense:1,pay:1,recv:1};
+var EDITABLE={buy:1,sell:1,loss:1,expense:1,pay:1,recv:1,block:1};
+function extraNote(r){
+  var x=[];
+  if(r.type==='block'){x.push('معمل: '+(r.factory||'-')+' بسعر '+plain(+r.cost||0,false,r.cur));}
+  if((r.type==='sell'||r.type==='block')&&(+r.fare>0||r.car)){x.push('سيارة: '+(r.car||'-')+(+r.fare>0?' أجرة '+plain(+r.fare,false,r.cur):''));}
+  if(r.note)x.push(r.note);
+  return x.join(' · ');
+}
 function movesTable(list){
   var html='<div class="tw"><table><thead><tr><th class="k">التاريخ</th><th>النوع</th><th>الشخص</th><th>المادة</th><th class="num">الكمية (م³)</th><th class="num">سعر المتر</th><th class="num">الإجمالي</th><th class="num">الربح</th><th>ملاحظة</th><th></th></tr></thead><tbody>';
   list.forEach(function(r){
     var rc=calc.rowCalc.get(r.id)||{amount:0};
-    var hasItem=(r.type==='buy'||r.type==='sell'||r.type==='loss'||r.type==='openstock');
-    var hasPrice=(r.type==='buy'||r.type==='sell'||r.type==='openstock');
-    var qtyCell=hasItem?qty(+r.qty)+(rc.short?' <span class="pill loss">أكثر من المتوفر</span>':''):'-';
+    var hasItem=(r.type==='buy'||r.type==='sell'||r.type==='loss'||r.type==='openstock'||r.type==='block');
+    var hasPrice=(r.type==='buy'||r.type==='sell'||r.type==='openstock'||r.type==='block');
+    var qtyCell=hasItem?qty(+r.qty)+(r.type==='block'?' <span class="sm">بلوكة</span>':'')+(rc.short?' <span class="pill loss">أكثر من المتوفر</span>':''):'-';
     var priceCell=hasPrice?money(+r.price,r.cur):'-';
-    var profitCell=(r.type==='sell'||r.type==='loss')?'<span class="'+(rc.profit<-0.005?'neg':'pos')+'">'+money(rc.profit)+'</span>':'-';
+    var profitCell=(r.type==='sell'||r.type==='loss'||r.type==='block')?'<span class="'+(rc.profit<-0.005?'neg':'pos')+'">'+money(rc.profit)+'</span>':'-';
     var act;
     if(S.confirm===r.id){
       act='<div class="rowact"><button type="button" class="btn small danger" data-act="del-yes" data-id="'+esc(r.id)+'">تأكيد الحذف</button><button type="button" class="btn small" data-act="del-no">لا</button></div>';
@@ -945,7 +1027,7 @@ function movesTable(list){
     }
     html+='<tr><td class="k">'+esc(r.date||'')+'</td><td><span class="pill '+(PILL[r.type]||'zero')+'">'+esc(typeLabel(r))+'</span></td><td>'+(r.party?esc(r.party):'-')+'</td><td>'+(r.item?esc(r.item):'-')+'</td>'+
       '<td class="num">'+qtyCell+'</td><td class="num">'+priceCell+'</td><td class="num">'+(r.type==='loss'?money(rc.amount):money(amt(r),r.cur))+'</td><td class="num">'+profitCell+'</td>'+
-      '<td class="note">'+esc(r.note||'')+'</td><td>'+act+'</td></tr>';
+      '<td class="note">'+esc(extraNote(r))+'</td><td>'+act+'</td></tr>';
   });
   html+='</tbody></table></div>';
   return html;
@@ -1014,6 +1096,10 @@ function descOf(r){
   switch(r.type){
     case 'buy':base='استلام '+r.item+' '+nq.format(q)+' م³ × '+nf.format(p)+(curOf(r)==='usd'?' $':'');break;
     case 'sell':base='بيع '+r.item+' '+nq.format(q)+' م³ × '+nf.format(p)+(curOf(r)==='usd'?' $':'');break;
+    case 'block':base='بلوك '+r.item+' '+nq.format(q)+' بلوكة × '+nf.format(p)+(curOf(r)==='usd'?' $':'')+(r.factory?' (من '+r.factory+')':'');break;
+    case 'blockbuy':base='شراء بلوك '+r.item+' '+nq.format(q)+' بلوكة × '+nf.format(p)+(curOf(r)==='usd'?' $':'');break;
+    case 'fare':base='أجرة نقل';break;
+    case 'carfee':base='أجرة نقل';break;
     case 'pay':base='دفعنا له';break;
     case 'recv':base='دفع لنا';break;
     case 'loanin':base='سلفة استلفناها منه';break;
@@ -1163,13 +1249,13 @@ async function stmtImg(){
 function renderView(){
   var h;
   if(S.stmt)h=viewStmt();
-  else h=S.tab==='stock'?viewStock():S.tab==='mats'?viewMats():S.tab==='people'?viewPeople():S.tab==='debts'?viewDebts():S.tab==='moves'?viewMoves():S.tab==='acc'?viewAccount():viewOld();
+  else h=S.tab==='stock'?viewStock():S.tab==='mats'?viewMats():S.tab==='block'?viewBlock():S.tab==='people'?viewPeople():S.tab==='debts'?viewDebts():S.tab==='moves'?viewMoves():S.tab==='acc'?viewAccount():viewOld();
   if(!S.stmt&&S.tab!=='old'&&S.tab!=='debts'&&S.tab!=='people'&&!S.rate&&rows.some(function(r){return curOf(r)==='usd';}))h='<div class="callout alert"><span>عندك حركات بالدولار. اكتب سعر الدولار بالليرة في الأعلى حتى تدخل في الأرباح والمخزون والإجماليات. كشوف الناس لا تتأثر.</span></div>'+h;
   $('view').innerHTML=h;
 }
 function render(){
   calc=compute(rows,S.rate);
-  renderStatus();renderTiles();renderTabs();renderView();refreshLists();updatePreview();updateDebtPrev();updateOldPrev();
+  renderStatus();renderTiles();renderTabs();renderView();refreshLists();updatePreview();updateDebtPrev();updateOldPrev();updateBlockPrev();
 }
 
 /* ---------- main entry form ---------- */
@@ -1182,6 +1268,8 @@ function syncType(){
   $('wQty').hidden=(ex||pay);
   $('wPrice').hidden=(t==='loss');
   $('wCur').hidden=(t==='loss');
+  $('wCar').hidden=(t!=='sell');
+  $('wFare').hidden=(t!=='sell');
   $('lParty').textContent=t==='pay'?'دفعت لمن؟':t==='recv'?'قبضت ممن؟':t==='sell'?'لمن بعت؟ (فارغ = نقداً)':'من نزّل لك؟ (فارغ = نقداً)';
   $('lItem').textContent=ex?'البند (مثال: مازوت)':'المادة';
   $('lQty').textContent='الكمية (م³)';
@@ -1203,9 +1291,11 @@ function updatePreview(){
   }
   var pn=cleanName($('fParty').value);
   var h='';
+  var fare=(t==='sell')?parseNum($('fFare').value):0,car=cleanName($('fCar').value);
   if(t==='buy'||t==='sell'){
     var parts=[];
     if(q>0&&p>=0)parts.push('الإجمالي: <b>'+money(q*p,cu)+'</b>');
+    if(fare>0)parts.push('أجرة النقل: <b>'+money(fare,cu)+'</b>'+(car?' (لسيارة '+esc(car)+')':'')+' · على الزبون: <b>'+money(q*p+fare,cu)+'</b>');
     if(t==='sell'){
       if(it)parts.push('المتوفر: <b>'+qty(Math.max(it.qty,0))+'</b> م³');
       if(it&&q>0&&p>=0&&fxv>0)parts.push('الربح المتوقع: <b>'+money(q*(p*fxv-it.avg))+'</b>');
@@ -1231,7 +1321,7 @@ function updatePreview(){
 }
 function resetForm(keepType){
   S.editing=null;
-  $('fParty').value='';$('fItem').value='';$('fItemSel').selectedIndex=0;$('fQty').value='';$('fPrice').value='';$('fNote').value='';
+  $('fParty').value='';$('fItem').value='';$('fItemSel').selectedIndex=0;$('fQty').value='';$('fPrice').value='';$('fNote').value='';$('fCar').value='';$('fFare').value='';
   $('editing').hidden=true;$('cancelEdit').hidden=true;$('save').textContent='إضافة';
   if(!keepType){$('t-buy').checked=true;}
   syncType();
@@ -1250,6 +1340,7 @@ f.addEventListener('submit',async function(e){
   if(!(p>=0)){setMsg('msg',(t==='expense'||pay)?'اكتب المبلغ.':'اكتب سعر المتر.',true);$('fPrice').focus();return;}
   var old=S.editing?rows.find(function(r){return r.id===S.editing;}):null;
   var row={id:old?old.id:newId(),date:date,type:t,party:party,item:item,qty:q,price:p,cur:(t==='loss'?'syp':($('fCur').value==='usd'?'usd':'syp')),note:cleanName($('fNote').value),ts:old?(old.ts||Date.now()):Date.now()};
+  if(t==='sell'){var fr=parseNum($('fFare').value);if(fr>0){row.fare=fr;row.car=cleanName($('fCar').value);}}
   if(old&&old.demo)row.demo=true;
   var btn=$('save');btn.disabled=true;
   try{
@@ -1287,6 +1378,7 @@ function startEdit(id){
   $('fQty').value=(r.type==='expense'||r.type==='pay'||r.type==='recv')?'':String(r.qty);
   $('fPrice').value=r.type==='loss'?'':String(r.price);
   $('fCur').value=curOf(r)==='usd'?'usd':'syp';
+  $('fCar').value=r.car||'';$('fFare').value=r.fare?String(r.fare):'';
   $('fNote').value=r.note||'';
   $('editing').hidden=false;$('cancelEdit').hidden=false;$('save').textContent='حفظ التعديل';
   S.stmt=null;
@@ -1294,6 +1386,108 @@ function startEdit(id){
   var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   f.scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});
   (r.type==='expense'||$('fItemSel').value===NEWOPT?$('fItem'):$('fItemSel')).focus();
+}
+
+
+/* ---------- block ---------- */
+function viewBlock(){
+  if(!S.ready)return loadingView();
+  var list=rows.filter(function(r){return r.type==='block';}).sort(function(a,b){return cmpRows(b,a);});
+  var html=demoBanner();
+  var n=0,sales=0,profit=0;
+  list.forEach(function(r){var rc=calc.rowCalc.get(r.id)||{};n+=+r.qty||0;sales+=rc.amount||0;profit+=rc.profit||0;});
+  function mt(l,v){return '<div class="tile"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>';}
+  html+='<section><h2>البلوك</h2></section><div class="mini">'+mt('عدد البلوك المباع',qty(n))+mt('المبيعات',money(sales))+mt('الربح',money(profit))+'</div>';
+  var facs={};list.forEach(function(r){if(r.factory)facs[cleanName(r.factory)]=1;});
+  var fk=Object.keys(facs);
+  if(fk.length){
+    html+='<section><h2>حسابات المعامل</h2></section><ul class="pl">';
+    fk.forEach(function(nm){
+      var a=partyBal(nm,'syp'),b=partyBal(nm,'usd'),t=[];
+      if(Math.abs(a)>0.005)t.push(balText(a,'syp'));
+      if(Math.abs(b)>0.005)t.push(balText(b,'usd'));
+      html+='<li><button type="button" class="linkbtn" data-act="party" data-name="'+esc(nm)+'">'+esc(nm)+'</button>: '+(t.length?t.join(' · '):'مصفّى')+'</li>';
+    });
+    html+='</ul>';
+  }
+  if(!list.length)return html+'<p class="hint">لا توجد شحنات بلوك بعد. سجّل أول شحنة من النموذج أعلاه.</p>';
+  html+='<section><h2>الشحنات</h2></section>'+movesTable(list);
+  return html;
+}
+function fillBlockOff(){
+  var sel=$('bOffItem'),cur=sel.value;
+  sel.innerHTML='<option value="">لا شيء</option>'+MATS.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
+  if(cur)sel.value=cur;
+}
+function syncBlockOff(){
+  var on=!$('bOffItem').value;
+  $('bWOffQty').hidden=on;$('bWOffPrice').hidden=on;
+}
+function updateBlockPrev(){
+  var q=parseNum($('bQty').value),pr=parseNum($('bPrice').value),co=parseNum($('bCost').value),fare=parseNum($('bFare').value);
+  var cu=$('bCur').value==='usd'?'usd':'syp',pn=cleanName($('bParty').value),fac=cleanName($('bFactory').value),parts=[];
+  if(q>0&&pr>=0&&co>=0)parts.push('الربح: <b>'+money(q*(pr-co),cu)+'</b>');
+  if(q>0&&pr>=0)parts.push('على الزبون: <b>'+money(q*pr+(fare>0?fare:0),cu)+'</b>');
+  if(q>0&&co>=0&&fac)parts.push('للمعمل: <b>'+money(q*co,cu)+'</b>');
+  if(pn)parts.push('حساب '+esc(pn)+' الآن: '+balText(partyBal(pn,cu),cu));
+  if(cu==='usd'&&!S.rate)parts.push('<span class="warn">اكتب سعر الدولار في الأعلى</span>');
+  $('bPrev').innerHTML=parts.join(' · ');
+}
+function resetBlock(){
+  S.editingB=null;
+  ['bParty','bFactory','bType','bQty','bPrice','bCost','bCar','bFare','bPaid','bOffQty','bOffPrice','bNote'].forEach(function(id){$(id).value='';});
+  $('bOffItem').value='';syncBlockOff();
+  $('bWPaid').hidden=false;$('bWOff').hidden=false;
+  $('bEditing').hidden=true;$('bCancel').hidden=true;$('bSave').textContent='إضافة';
+  updateBlockPrev();
+}
+$('fBlock').addEventListener('input',function(){updateBlockPrev();setMsg('bMsg','');});
+$('fBlock').addEventListener('change',function(e){if(e.target.id==='bOffItem')syncBlockOff();updateBlockPrev();});
+$('bCancel').addEventListener('click',function(){resetBlock();setMsg('bMsg','');});
+$('fBlock').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var date=$('bDate').value,party=cleanName($('bParty').value),fac=cleanName($('bFactory').value),type=cleanName($('bType').value);
+  var q=parseNum($('bQty').value),pr=parseNum($('bPrice').value),co=parseNum($('bCost').value),fare=parseNum($('bFare').value),car=cleanName($('bCar').value);
+  var cu=$('bCur').value==='usd'?'usd':'syp',paid=parseNum($('bPaid').value);
+  var offItem=$('bOffItem').value,offQ=parseNum($('bOffQty').value),offP=parseNum($('bOffPrice').value);
+  if(!date){setMsg('bMsg','اختر التاريخ.',true);return;}
+  if(!type){setMsg('bMsg','اكتب نوع البلوك.',true);$('bType').focus();return;}
+  if(!(q>0)){setMsg('bMsg','اكتب عدد البلوك.',true);$('bQty').focus();return;}
+  if(!(pr>=0)){setMsg('bMsg','اكتب سعر البلوكة للزبون.',true);$('bPrice').focus();return;}
+  if(!(co>=0)){setMsg('bMsg','اكتب سعر البلوكة من المعمل.',true);$('bCost').focus();return;}
+  if(paid>0&&!fac){setMsg('bMsg','اكتب اسم المعمل حتى تُسجَّل الدفعة له.',true);$('bFactory').focus();return;}
+  if(offItem){
+    if(!party){setMsg('bMsg','اكتب اسم الزبون الذي نزّل المادة.',true);$('bParty').focus();return;}
+    if(!(offQ>0)||!(offP>=0)){setMsg('bMsg','اكتب كمية المادة وسعر المتر.',true);$('bOffQty').focus();return;}
+  }
+  var old=S.editingB?rows.find(function(r){return r.id===S.editingB;}):null;
+  var row={id:old?old.id:newId(),date:date,type:'block',party:party,factory:fac,item:type,qty:q,price:pr,cost:co,cur:cu,note:cleanName($('bNote').value),ts:old?(old.ts||Date.now()):Date.now()};
+  if(fare>0){row.fare=fare;row.car=car;}
+  if(old&&old.demo)row.demo=true;
+  var list=[row];
+  if(!old&&paid>0)list.push({id:newId(),date:date,type:'pay',party:fac,item:'',qty:1,price:paid,cur:cu,note:'دفعة بلوك '+type,ts:Date.now()+1});
+  if(!old&&offItem)list.push({id:newId(),date:date,type:'buy',party:party,item:offItem,qty:offQ,price:offP,cur:cu,note:'نزّل بدل ثمن البلوك',ts:Date.now()+2});
+  var btn=$('bSave');btn.disabled=true;
+  try{
+    await bulkPut(list);
+    setMsg('bMsg',old?'تم حفظ التعديل.':(list.length>1?'تمت الإضافة مع الدفعة/المادة.':'تمت الإضافة.'),false);
+    var keepDate=date;resetBlock();$('bDate').value=keepDate;
+    $('bParty').focus();
+  }catch(err){setMsg('bMsg','تعذر الحفظ. تحقق من الاتصال وأن لديك صلاحية الكتابة.',true);}
+  btn.disabled=false;
+});
+function startEditBlock(id){
+  var r=rows.find(function(x){return x.id===id;});if(!r||r.type!=='block')return;
+  S.editingB=id;S.confirm=null;S.stmt=null;
+  if(S.tab!=='block')S.tab='block';
+  $('bDate').value=r.date||today();$('bParty').value=r.party||'';$('bFactory').value=r.factory||'';$('bType').value=r.item||'';
+  $('bQty').value=String(r.qty);$('bPrice').value=String(r.price);$('bCost').value=String(r.cost||0);$('bCur').value=curOf(r)==='usd'?'usd':'syp';
+  $('bCar').value=r.car||'';$('bFare').value=r.fare?String(r.fare):'';$('bNote').value=r.note||'';
+  $('bPaid').value='';$('bOffItem').value='';syncBlockOff();
+  $('bWPaid').hidden=true;$('bWOff').hidden=true;$('bWOffQty').hidden=true;$('bWOffPrice').hidden=true;
+  $('bEditing').hidden=false;$('bCancel').hidden=false;$('bSave').textContent='حفظ التعديل';
+  renderTabs();renderView();updateBlockPrev();
+  $('fBlock').scrollIntoView({block:'center'});
 }
 
 /* ---------- debt form ---------- */
@@ -1418,7 +1612,7 @@ function exportStock(){
 function exportMoves(){
   var lines=filteredMoves().map(function(r){
     var rc=calc.rowCalc.get(r.id)||{amount:0};
-    var hasItem=(r.type==='buy'||r.type==='sell'||r.type==='loss'||r.type==='openstock'),hasPrice=(r.type==='buy'||r.type==='sell'||r.type==='openstock');
+    var hasItem=(r.type==='buy'||r.type==='sell'||r.type==='loss'||r.type==='openstock'||r.type==='block'),hasPrice=(r.type==='buy'||r.type==='sell'||r.type==='openstock'||r.type==='block');
     return [r.date||'',typeLabel(r),r.party||'',r.item||'',hasItem?+r.qty:'',hasPrice?+r.price:'',(r.type==='loss'?rc.amount:amt(r)),(r.type==='loss'||curOf(r)==='syp'?'ليرة':'دولار'),(rc.profit==null?'':rc.profit),r.note||''];
   });
   exportCsv('younes-moves-'+stamp()+'.csv',['التاريخ','النوع','الشخص','المادة','الكمية م³','سعر المتر','الإجمالي','العملة','الربح (ل.س)','ملاحظة'],lines);
@@ -1479,7 +1673,7 @@ $('view').addEventListener('click',function(e){
   else if(act==='stmt-back'){S.stmt=null;S.copyText='';renderTabs();renderView();}
   else if(act==='stmt-copy'){stmtCopy();}
   else if(act==='stmt-img'){stmtImg();}
-  else if(act==='edit'){startEdit(id);}
+  else if(act==='edit'){var er=rows.find(function(x){return x.id===id;});if(er&&er.type==='block')startEditBlock(id);else startEdit(id);}
   else if(act==='del'){S.confirm=id;renderView();}
   else if(act==='del-no'){S.confirm=null;renderView();}
   else if(act==='del-yes'){
